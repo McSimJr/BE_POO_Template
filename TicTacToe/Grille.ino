@@ -1,55 +1,97 @@
 #include <Wire.h>
 #include "rgb_lcd.h"
+#include <iostream>
 
 rgb_lcd lcd;
 
-class box{
-    public :
-    int i;
-    void empty(){}
-    char getchar(){return 'o';}
-};
+#define Circle 1
+#define Cross 2;
+#define Empty 0;
+
+class pion{
+  private :
+    int type;
+ public:
+    void SetType(int TypeIn){
+    type=TypeIn;
+    }
+
+    void operator = (int TypeIn){  //Pareil qu'au-dessus mais permet de redéfinir un opérateur
+      type=TypeIn;
+    }
+
+    int GetType(){
+      return type;
+    }
+
+    char GetChar(){
+      char Resultat;
+      if (type==Circle){
+        Resultat='o';
+      } else if (type==2) {
+        Resultat='x';
+      } else {
+        Resultat=' '; 
+      }
+      return Resultat;
+    }
+
+    pion(int TypeIn){
+      type=TypeIn;
+    }
+    pion(){
+      type=Empty;
+    }
+    };
 class grid{
-    private:
-        box table[3][3];
-    public :
-        grid(){
-            for (int i=0;i<3;i++){
-                for (int j=0;j<3;j++){
-                    table[i][j].empty();
-                }
-            }
+  private:
+    pion table[3][3];
+  public :
+    grid(){
+      for (int i=0;i<3;i++){
+        for (int j=0;j<3;j++){
+          table[i][j]=Empty;
         }
-        void Display_line(int line){
-          int line_corrected=line;
-          if (line == 2){
-            line_corrected = 0;
-          }
-          for (int j=0;j<3;j++){
-            if (line < 2){
-              lcd.setCursor(j,line_corrected);
-            }else{
-              lcd.setCursor(j+3,line_corrected);
-            }
-            lcd.print(table[line][j].getchar());
-          }
+      }
+    }
+    void Display_line(int line){
+      int line_corrected=line;
+      if (line == 2){
+        line_corrected = 0;
+      }
+      for (int j=0;j<3;j++){
+        if (line < 2){
+          lcd.setCursor(j,line_corrected);
+        }else{
+          lcd.setCursor(j+3,line_corrected);
         }
-        void Display_grid(){
-          for (int i=0;i<3;i++){
-            this->Display_line(i);
-          }
+        lcd.print(table[line][j].GetChar());
+      }
+    }
+    void Display_grid(){
+      for (int i=0;i<3;i++){
+        this->Display_line(i);
+      }
+    }
+    void operator =(grid grille2){
+      for (int i=0;i<3;i++){
+        for (int j=0;j<3;j++){
+          table[i][j]=grille2.table[i][j];
         }
-        void Empty_grid(){
-          for (int i=0;i<3;i++){
-            for (int j=0;j<3;j++){
-              table[i][j].empty();
-            }
-          }
+      }
+    }
+    void Empty_grid(){
+      for (int i=0;i<3;i++){
+        for (int j=0;j<3;j++){
+          table[i][j]=Empty;
         }
-        
-        int[3]
-
-
+      }
+    }
+      
+    pion operator [] (int i){
+      return table[i/3][i%3];
+    }
+      
 
 };
 
@@ -70,6 +112,9 @@ void setup() {
   //lcd.print("Hello, world!");
   
   delay(1000);
+  for (int i=0;i<9;i++){
+    grille[i]=i%3;
+  }
 }
 
 void loop() {
