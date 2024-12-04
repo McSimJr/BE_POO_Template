@@ -6,46 +6,45 @@
 
 using namespace std;
 
-#define Circle  1
-#define Cross   2
-#define Empty   0
+#define Circle    1
+#define Cross     2
+#define Empty     0
+#define Player_1  1
+#define Player_2  2
 const int buttonPin = D6;     // the number of the pushbutton pin
-const int ultrasonicPin1 = D7;     // the number of the pushbutton pin
-const int ultrasonicPin2 = D8;     // the number of the pushbutton pin
+const int ultrasonicPin1 = D7;     // the number of the first ultrasonic sensor pin
+const int ultrasonicPin2 = D8;     // the number of the second ultrasonic sensor pin
 
+
+class coords{
+  public :
+    int x;
+    int y;
+    coords(){
+      x=0;
+      y=0;
+    }
+};
 
 class peripheral{
   protected :
     virtual void init()=0;
 };
 
-
-
-class ultrasonic_Sensors : public peripheral{
-  Ultrasonic * Capteur1;
-  Ultrasonic * Capteur2;
+class button : public peripheral{
   private :
-    const float DIST_BETWEEN_SENSORS=9.5; //mesuré à la règle
+    int pin;
   public :
     void init(){
-      Capteur1=new Ultrasonic(ultrasonicPin1);
-      Capteur2=new Ultrasonic(ultrasonicPin2);
+      pin=buttonPin;
+      pinMode(buttonPin, INPUT);
     }
-    float get_x(){
-      long d1_in_cm = Capteur1->MeasureInCentimeters();
-      long d2_in_cm = Capteur2->MeasureInCentimeters();
-      float Theta= acos((d1_in_cm*d1_in_cm+DIST_BETWEEN_SENSORS*DIST_BETWEEN_SENSORS-d2_in_cm*d2_in_cm)/(2*d1_in_cm*DIST_BETWEEN_SENSORS));
-      return (d1_in_cm*cos(Theta)+DIST_BETWEEN_SENSORS*2);
-    }    
-    float get_y(){
-      long d1_in_cm = Capteur1->MeasureInCentimeters();
-      long d2_in_cm = Capteur2->MeasureInCentimeters();
-      float Theta= acos((d1_in_cm*d1_in_cm+DIST_BETWEEN_SENSORS*DIST_BETWEEN_SENSORS-d2_in_cm*d2_in_cm)/(2*d1_in_cm*DIST_BETWEEN_SENSORS));
-      return (d1_in_cm*sin(Theta));
+    int GetPressed(){
+      return (digitalRead(pin)==HIGH);
     }
-
-
 };
+
+button bouton;
 
 class display : public peripheral{
   private :
@@ -70,20 +69,63 @@ class display : public peripheral{
     }
 };
 
-class button : public peripheral{
+display lcd;
+
+
+class ultrasonic_Sensors : public peripheral{
+  Ultrasonic * Capteur1;
+  Ultrasonic * Capteur2;
   private :
-    int pin;
+    const float DIST_BETWEEN_SENSORS=9.0; //mesuré à la règle
+    float x1=1000;
+    float y1=1000;
   public :
-    void init(){
-      pin=buttonPin;
-      pinMode(buttonPin, INPUT);
+    void calibrate(){
+      while (!(bouton.GetPressed())){
+        lcd.setCursor(2,1);
+        float x,y;
+        coords point=get_coords();
+        x=point.x;
+        y=point.y;
+        lcd.print_Word("x:"+String(x)+" y:"+String(y));
+        delay(200);
+      }
+      while ((x1<5 || x1>100)&&(y1<5 || y1>100)){
+        coords point = get_coords();
+        y1=point.y;
+        x1=point.x;
+      }   
+      while (bouton.GetPressed());
     }
-    int GetPressed(){
-      return (digitalRead(pin)==HIGH);
+    int get_diff_x(float x){
+      return (x-x1);
+    }
+    int get_diff_y(float y){
+      return (y-y1);
+    }
+    void init(){
+      Capteur1=new Ultrasonic(ultrasonicPin1);
+      Capteur2=new Ultrasonic(ultrasonicPin2);
+      this->calibrate();
+    }
+
+    coords get_coords(){
+      long d1_in_cm=0;
+      long d2_in_cm=0;
+      for (int i=0;i<10;i++){
+        d1_in_cm += Capteur1->MeasureInCentimeters();
+        d2_in_cm += Capteur2->MeasureInCentimeters();
+        delay(10);
+      }
+      d1_in_cm = d1_in_cm/10;
+      d2_in_cm = d2_in_cm/10;
+      float Theta= acos((d1_in_cm*d1_in_cm+DIST_BETWEEN_SENSORS*DIST_BETWEEN_SENSORS-d2_in_cm*d2_in_cm)/(2*d1_in_cm*DIST_BETWEEN_SENSORS));
+      coords point;
+      point.y=d1_in_cm*sin(Theta);
+      point.x=d1_in_cm*cos(Theta)+DIST_BETWEEN_SENSORS*2;
+      return (point);
     }
 };
-
-display lcd;
 
 class pion{
   private :
@@ -121,16 +163,75 @@ class pion{
     }
 };
 
+ultrasonic_Sensors sensor;
+
 class grid{
   private:
     pion table[3][3];
+    const float Pion_size=8.; //Les cases font 10 cm de large
   public :
     grid(){
       for (int i=0;i<3;i++){
         for (int j=0;j<3;j++){
-          table[i][j]=i;
+          table[i][j]=Empty;
         }
       }
+    }
+    void display_player(int player){
+      lcd.setCursor(9, 0);
+      lcd.print_Word("Player"+ String(player));
+    }
+    void Toggle_player(int &player){
+      static int tab_next[3]={0,2,1};
+      player=tab_next[player];
+    }
+    int get_position(){
+      float x = 1000;
+      float y = 1000;
+      while ((x<5 || x>100)&&(y<5 || y>100)){ //éviter les aberrations/ captage d'autres objets 
+        coords point=sensor.get_coords();
+        x=point.x;
+        y=point.y;
+      }
+
+      float relative_x = sensor.get_diff_x(x);
+      float relative_y = sensor.get_diff_y(y);
+      float position_x = relative_x/Pion_size;
+      float position_y = relative_y/Pion_size;
+      int Res=5;
+      if (position_x<-1){  // de 1 à 2 c'est la ligne du milieu, de 2 à 3 la ligne du bas
+        Res-=3;
+      }
+      else if (position_x>1){
+        Res+=3;
+      }
+       if (position_y<-1){  // de 1 à 2 c'est la ligne du milieu, de 2 à 3 la ligne du bas
+        Res-=1;
+      }
+      else if (position_y>1){
+        Res+=1;
+      } 
+      return Res;
+    }
+    pion& operator [] (int i){
+      return table[(i+1)/3][(i+1)%3];
+    }
+
+    void set_pion(int player){
+      int position;
+      int x,y;
+      while (!(bouton.GetPressed())){
+        lcd.setCursor(9,1);
+        position = this->get_position();
+        lcd.print_Word(String(position));
+      }
+      x=(position-1)/3;
+      y=(position-1)%3;
+      //((*this)[position]).SetType(player);
+      table[x][y].SetType(player);
+      delay(200);
+      while (bouton.GetPressed());
+
     }
     void Display_line(int line){
       int line_corrected=line;
@@ -164,42 +265,30 @@ class grid{
           table[i][j]=Empty;
         }
       }
-    }
-      
-    pion& operator [] (int i){
-      return table[i/3][i%3];
-    }
-      
-
+    }    
 };
 
 
 grid grille;
-button bouton;
-ultrasonic_Sensors sensor;
+int Player=Player_1;
 
 void setup() {
   // put your setup code here, to run once:
   lcd.init();
   bouton.init();
   sensor.init();
-
-  
-  delay(1000);
-  grille[7]=Circle;
-  // initialize the pushbutton pin as an input:
-  
+  lcd.setCursor(2,1);
+  lcd.print_Word("              ");
 }
 
 void loop() {
-    if (bouton.GetPressed()){
-      grille[0].SetType((grille[0].GetType()+1)%3);
-    }
+    grille.display_player(Player);
+    grille.set_pion(Player);
     // set the cursor to column 0, line 1
     // (note: line 1 is the second row, since counting begins with 0):
-    lcd.setCursor(12, 1);
     // print the number of seconds since reset:
-    lcd.print_Word(String(sensor.get_x()));
     grille.Display_grid();
-    delay(200);
+
+    grille.Toggle_player(Player);
+    delay(1000);
 }
