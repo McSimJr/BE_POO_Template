@@ -220,13 +220,17 @@ class grid{
     void set_pion(int player){
       int position;
       int x,y;
-      while (!(bouton.GetPressed())){
-        lcd.setCursor(9,1);
-        position = this->get_position();
-        lcd.print_Word(String(position));
+      int init=0;
+      while (table[x,y]!=Empty && init){
+        while (!(bouton.GetPressed())){
+          lcd.setCursor(9,1);
+          position = this->get_position();
+          lcd.print_Word(String(position));
+        }
+        x=(position-1)/3;
+        y=(position-1)%3;
+        init=1;
       }
-      x=(position-1)/3;
-      y=(position-1)%3;
       //((*this)[position]).SetType(player);
       table[x][y].SetType(player);
       delay(200);
