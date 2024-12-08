@@ -161,12 +161,15 @@ class pion{
     pion(){
       type=Empty;
     }
+    int operator != (int comp){
+      return (type != comp);
+    }
 };
 
 ultrasonic_Sensors sensor;
 
 class grid{
-  private:
+  protected:
     pion table[3][3];
     const float Pion_size=8.; //Les cases font 10 cm de large
   public :
@@ -219,9 +222,10 @@ class grid{
 
     void set_pion(int player){
       int position;
-      int x,y;
+      static int x=1;
+      static int y=1;
       int init=0;
-      while (table[x,y]!=Empty && init){
+      while (table[x][y] != Empty || !(init)){
         while (!(bouton.GetPressed())){
           lcd.setCursor(9,1);
           position = this->get_position();
@@ -273,7 +277,82 @@ class grid{
 };
 
 
-grid grille;
+class TicTacToe : public grid {
+  public :
+  int is_Winning(){
+    int win=0;
+    //vérif lignes
+    for (int i=0;i<3;i++){
+      if (table[i][0].GetChar() == table[i][1].GetChar() && table[i][1].GetChar() == table[i][2].GetChar()) {
+        return win=table[i][0].GetType();
+      }
+    }
+    // Vérifier les colonnes.
+    for (int j = 0; j < 3; j++) {
+      if (table[0][j].GetChar() == table[1][j].GetChar() && table[1][j].GetChar() == table[2][j].GetChar()) {
+        return win=table[0][j].GetType();
+      }
+    } 
+    // Vérifier la diagonale principale.
+    if (table[0][0].GetChar() == table[1][1].GetChar() && table[1][1].GetChar() == table[2][2].GetChar()) {
+      return win=table[0][0].GetType();
+    }
+    // Vérifier la diagonale secondaire.
+    if (table[0][2].GetChar() == table[1][1].GetChar() && table[1][1].GetChar() == table[2][0].GetChar()) {
+      return win=table[0][2].GetType();
+    }
+    int product=1;
+    for (int i=0;i<3;i++){
+      for (int j=0;j<3;j++){
+        product=product*table[i][j].GetType();
+      }
+    }
+    if (product == 0){ //S'il reste au moins une case vide
+      return win=0;
+    }
+    else {    // Si la grille est pleine
+      return 3;
+    }
+  }
+  void Display_Winner(int player){
+    lcd.setCursor(0,0);
+    lcd.print_Word("                 ");
+    lcd.setCursor(0,1);
+    lcd.print_Word("                 "); // clears the screen
+    lcd.setCursor(0,0);
+    if (player==3){
+      lcd.print_Word("That's a draw !");
+    }
+    else{
+      lcd.print_Word("Player "+String(player)+" won !");
+    }
+  }
+  void init_game(){
+    lcd.init();
+    bouton.init();
+    sensor.init();
+    lcd.setCursor(2,1);
+    lcd.print_Word("              ");
+  }
+  TicTacToe():grid(){
+    init_game();
+  }
+  void run_game(){
+    int player=Player_1;
+    int Winner=0;
+    this->Empty_grid();
+    while (!Winner){
+      display_player(player);
+      set_pion(player);
+      Toggle_player(player);
+      Display_grid();
+      Winner=is_Winning();
+    }
+    Display_Winner(Winner);
+  }
+};
+
+/*grid grille;
 int Player=Player_1;
 
 void setup() {
@@ -295,4 +374,13 @@ void loop() {
 
     grille.Toggle_player(Player);
     delay(1000);
+}
+*/
+TicTacToe game;
+void setup(){
+
+}
+void loop(){
+  game.run_game();
+  while (!(bouton.GetPressed()));
 }
