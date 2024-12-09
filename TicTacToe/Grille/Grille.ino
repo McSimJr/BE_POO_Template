@@ -16,35 +16,35 @@ const int ultrasonicPin1 = D7;     // Le pin associé au premier capteur à ultr
 const int ultrasonicPin2 = D8;     // Le pin associé au deuxième capteur à ultrasons
 
 
-class coords{             //Initialise une classe permettant de transférer x et y en même temps, sans devoir réaliser une fonction qui renvoie x et l'autre y, ce qui les désynchroniserait
+class coords{                      //Initialise une classe permettant de transférer x et y en même temps, sans devoir réaliser une fonction qui renvoie x et l'autre y, ce qui les désynchroniserait
   public :
     int x;
     int y;
-    coords(){             //Constructeur vide qui initialise les coordonnées à 0
+    coords(){                      //Constructeur vide qui initialise les coordonnées à 0
       x=0;
       y=0;
     }
 };
 
-class peripheral{         //Classe englobant tous les capteurs, pour les forcer à avoir la méthode abstraite init
+class peripheral{                  //Classe englobant tous les capteurs, pour les forcer à avoir la méthode abstraite init
   protected :
     virtual void init()=0;
 };
 
-class button : public peripheral{ //Classe bouton
+class button : public peripheral{  //Classe bouton
   private :
     int pin;
   public :
-    void init(){                  //Associe le pin au capteur
+    void init(){                   //Associe le pin au capteur
       pin=buttonPin;
-      pinMode(buttonPin, INPUT);  //Met ce pin au mode voulu
+      pinMode(buttonPin, INPUT);   //Met ce pin au mode voulu
     }
-    int GetPressed(){             //Renvoie si le bouton est appuyé
+    int GetPressed(){              //Renvoie si le bouton est appuyé
       return (digitalRead(pin)==HIGH);
     }
 };
 
-button bouton;            //Instancie un bouton
+button bouton;                     //Instancie un bouton
 
 class display : public peripheral{ //Classe écran
   private :
@@ -53,7 +53,7 @@ class display : public peripheral{ //Classe écran
     const int colorB = 0;
     rgb_lcd lcd;
   public :
-    void init(){          //Initialise le format de l'écran et la couleur du fond
+    void init(){                    //Initialise le format de l'écran et la couleur du fond
       lcd.begin(16, 2);
       lcd.setRGB(colorR, colorG, colorB);
     }
@@ -95,35 +95,35 @@ class ultrasonic_Sensors : public peripheral{ //Classe définissant
         y1=point.y;
         x1=point.x;
       }   
-      while (bouton.GetPressed());//Attend que le bouton ne soit plus pressé
+      while (bouton.GetPressed());  //Attend que le bouton ne soit plus pressé
     }
-    int get_diff_x(float x){      //Renvoie la coordonnée en x relative à celle de la case milieu 
+    int get_diff_x(float x){        //Renvoie la coordonnée en x relative à celle de la case milieu 
       return (x-x1);
     }
-    int get_diff_y(float y){      //De même pour y
+    int get_diff_y(float y){        //De même pour y
       return (y-y1);
     }
-    void init(){                  //Méthode d'initialisation du capteur
+    void init(){                    //Méthode d'initialisation du capteur
       Capteur1=new Ultrasonic(ultrasonicPin1);  //Insctancie les capteurs à ultrasons en les liant à leur port
       Capteur2=new Ultrasonic(ultrasonicPin2);
-      this->calibrate();          //Calibre la grille
+      this->calibrate();            //Calibre la grille
     }
 
-    coords get_coords(){          //Récupère et renvoie les coordonnées x et y
+    coords get_coords(){            //Récupère et renvoie les coordonnées x et y
       long d1_in_cm=0;
       long d2_in_cm=0;
-      for (int i=0;i<10;i++){     //Réalise la mesure des distances entre l'objet et les capteurs 10 fois, espacées de 10 ms
+      for (int i=0;i<10;i++){       //Réalise la mesure des distances entre l'objet et les capteurs 10 fois, espacées de 10 ms
         d1_in_cm += Capteur1->MeasureInCentimeters();
         d2_in_cm += Capteur2->MeasureInCentimeters();
         delay(10);
       }
-      d1_in_cm = d1_in_cm/10;     //Calcule la moyenne de ces distances
+      d1_in_cm = d1_in_cm/10;       //Calcule la moyenne de ces distances
       d2_in_cm = d2_in_cm/10;
       float Theta= acos((d1_in_cm*d1_in_cm+DIST_BETWEEN_SENSORS*DIST_BETWEEN_SENSORS-d2_in_cm*d2_in_cm)/(2*d1_in_cm*DIST_BETWEEN_SENSORS));
       coords point;
       point.y=d1_in_cm*sin(Theta);
       point.x=d1_in_cm*cos(Theta)+DIST_BETWEEN_SENSORS*2; //Calcule les coordonnées associées sur un plan parallèle à la table
-      return (point);             //Renvoie les coordonnées ainsi obtenues
+      return (point);               //Renvoie les coordonnées ainsi obtenues
     }
 };
 
@@ -140,6 +140,9 @@ class pion{                         //Classe pion qui représente une case qui p
     }
 
     int GetType(){                  //Récupère le type de la case sélectionnée
+    //if (type>2 || type <0){         //Lève une exception si le type est inconnu, mais les exceptions ne sont pas supportées par l'IDE Arduino
+    //  throw pion(type);
+    //}
       return type;
     }
 
@@ -357,6 +360,16 @@ void setup(){
 
 }
 void loop(){
-  game.run_game();                //Lance une partie
+  //try{
+    game.run_game();                //Lance une partie
+  /*}
+  catch (int err){
+    lcd.setCursor(0,0);
+    lcd.print_Word("                 ");
+    lcd.setCursor(0,1);
+    lcd.print_Word("                 "); // Efface l'affichage
+    lcd.setCursor(0,0);
+      lcd.print_Word("Type inconnu"); //Affiche l'écran d'erreur
+  }*/
   while (!(bouton.GetPressed())); //Attend que le bouton soit pressé
 }
